@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      - DB_PATH=/data/app.db
+    volumes:
+      - sqlite_data:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  sqlite_data:
+
+
+docker build -t etl-backend:local ./backend
+docker build -t etl-frontend:local ./frontend
+
+k3d image import -c etl etl-backend:local
+k3d image import -c etl etl-frontend:local

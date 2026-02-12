@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ETL Dashboard</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#111a2e;
+      --muted:#9aa4b2;
+      --text:#e6edf3;
+      --border:rgba(255,255,255,.08);
+      --btn:#2f6fed;
+      --btn2:#1f2a44;
+      --ok:#2bd576;
+      --err:#ff5c6c;
+      --warn:#f6c177;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1000px 600px at 20% 0%, #16234a 0%, var(--bg) 50%),
+                  radial-gradient(900px 500px at 90% 10%, #2b1a52 0%, var(--bg) 60%);
+      color:var(--text);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:28px 18px 40px;}
+    header{
+      display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    h1{margin:0; font-size:26px; letter-spacing:.2px;}
+    .sub{margin-top:6px; color:var(--muted); font-size:14px; line-height:1.4}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid var(--border); border-radius:18px; padding:16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center;}
+    .btn{
+      border:0; border-radius:12px; padding:10px 14px;
+      background:var(--btn); color:white; cursor:pointer; font-weight:600;
+    }
+    .btn.secondary{background:var(--btn2); color:var(--text); border:1px solid var(--border);}
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px; border-radius:999px; border:1px solid var(--border);
+      background:rgba(0,0,0,.2); color:var(--muted); font-size:13px;
+    }
+    .dot{width:9px; height:9px; border-radius:999px; background:var(--warn);}
+    .dot.ok{background:var(--ok)}
+    .dot.err{background:var(--err)}
+    .grid{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-top:12px;}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
+    .kpi .label{color:var(--muted); font-size:12px}
+    .kpi .value{font-size:18px; margin-top:6px; font-weight:700}
+    .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:12px;}
+    input{
+      background:rgba(0,0,0,.2); border:1px solid var(--border);
+      color:var(--text); padding:10px 12px; border-radius:12px; outline:none;
+      width:160px;
+    }
+    table{
+      width:100%; border-collapse:separate; border-spacing:0; margin-top:14px;
+      overflow:hidden; border:1px solid var(--border); border-radius:16px;
+      background:rgba(0,0,0,.18);
+    }
+    th, td{padding:12px 10px; border-bottom:1px solid var(--border); font-size:13px;}
+    th{color:var(--muted); text-align:left; font-weight:600; background:rgba(255,255,255,.03)}
+    tr:last-child td{border-bottom:0}
+    .right{display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-wrap:wrap;}
+    .small{font-size:12px; color:var(--muted)}
+    .footer{margin-top:12px; color:var(--muted); font-size:12px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>ETL Dashboard</h1>
+        <div class="sub">
+          Frontend ➜ FastAPI ➜ SQLite (Kubernetes).<br/>
+          Déclenchement ETL + affichage des données persistées.
+        </div>
+      </div>
+
+      <div class="right">
+        <span class="pill" id="healthPill"><span class="dot" id="healthDot"></span><span id="healthText">API: inconnue</span></span>
+        <button class="btn" id="btnRun">Lancer ETL</button>
+        <button class="btn secondary" id="btnRefresh">Actualiser</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="grid">
+        <div class="kpi">
+          <div class="label">Total en base</div>
+          <div class="value" id="kpiTotal">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Affichés</div>
+          <div class="value" id="kpiShown">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Dernier chargement</div>
+          <div class="value mono" id="kpiLast">—</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <input id="search" placeholder="Recherche (nom, région…)" />
+        <input id="limit" type="number" value="50" min="1" max="1000" />
+        <input id="offset" type="number" value="0" min="0" />
+        <span class="small" id="status">Prêt.</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>CCA2</th>
+            <th>Nom</th>
+            <th>Région</th>
+            <th>Population</th>
+            <th>Capitale</th>
+            <th>Loaded at</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="footer">
+        Astuce : clique sur <b>Lancer ETL</b> puis <b>Actualiser</b> pour voir les nouveaux enregistrements.
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
